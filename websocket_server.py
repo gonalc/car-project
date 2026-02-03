@@ -6,7 +6,7 @@ from motor_controller import MotorController
 
 motor = None
 
-async def handle_client(websocket, path):
+async def handle_client(websocket):
     global motor
     print(f"Client connected: {websocket.remote_address}")
 
