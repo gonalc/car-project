@@ -1,9 +1,17 @@
 """Keyboard control interface"""
+import logging
 import sys
 import tty
 import termios
 import time
 from motor_controller import MotorController
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%H:%M:%S",
+)
+log = logging.getLogger(__name__)
 
 def get_key():
     fd = sys.stdin.fileno()
@@ -19,7 +27,9 @@ def get_key():
 
 def main():
     motor = MotorController()
-    
+    log.info("Running startup motor diagnostic...")
+    motor.diagnose()
+
     print("\n=== Robot Motor Control ===")
     print("Arrow Keys: ↑←↓→ to move")
     print("WASD: Alternative controls")

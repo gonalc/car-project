@@ -1,20 +1,39 @@
 """WebSocket server for Android app control"""
 import asyncio
+import logging
 import websockets
 import json
 from motor_controller import MotorController
 from config import JOYSTICK_DEAD_ZONE
 
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%H:%M:%S",
+)
+log = logging.getLogger(__name__)
+
 motor = None
 
 async def handle_client(websocket):
     global motor
-    print(f"Client connected: {websocket.remote_address}")
+    log.info("Client connected: %s", websocket.remote_address)
 
     try:
         async for message in websocket:
-            data = json.loads(message)
+            log.info("Received: %s", message)
+            try:
+                data = json.loads(message)
+            except json.JSONDecodeError:
+                log.warning("Invalid JSON: %s", message)
+                await websocket.send(json.dumps({'status': 'error', 'message': 'invalid JSON'}))
+                continue
+
             command = data.get('command')
+            if not command:
+                log.warning("Missing 'command' key in message")
+                await websocket.send(json.dumps({'status': 'error', 'message': 'missing command'}))
+                continue
 
             if command == 'forward':
                 motor.forward()
@@ -45,31 +64,40 @@ async def handle_client(websocket):
                 right_duty = right * motor.speed
                 motor.drive(left_duty, right_duty)
 
-                await websocket.send(json.dumps({
+                response = {
                     'status': 'ok',
                     'command': command,
                     'speed': motor.speed,
                     'left_motor': round(left_duty, 1),
-                    'right_motor': round(right_duty, 1)
-                }))
+                    'right_motor': round(right_duty, 1),
+                }
+                log.info("Response: %s", json.dumps(response))
+                await websocket.send(json.dumps(response))
+                continue
+            else:
+                log.warning("Unknown command: %s", command)
+                await websocket.send(json.dumps({'status': 'error', 'message': f'unknown command: {command}'}))
                 continue
 
-            await websocket.send(json.dumps({
+            response = {
                 'status': 'ok',
                 'command': command,
-                'speed': motor.speed
-            }))
+                'speed': motor.speed,
+            }
+            log.info("Response: %s", json.dumps(response))
+            await websocket.send(json.dumps(response))
 
     except websockets.exceptions.ConnectionClosed:
-        print("Client disconnected")
+        log.info("Client disconnected: %s", websocket.remote_address)
     finally:
         motor.stop()
 
 async def main():
     global motor
     motor = MotorController()
-
-    print("Starting motor control server on port 8765...")
+    log.info("Running startup motor diagnostic...")
+    motor.diagnose()
+    log.info("Starting motor control server on port 8765...")
     async with websockets.serve(handle_client, "0.0.0.0", 8765):
         await asyncio.Future()
 
@@ -77,7 +105,7 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\nShutting down...")
+        log.info("Shutting down...")
     finally:
         if motor:
             motor.cleanup()
