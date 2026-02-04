@@ -54,11 +54,8 @@ async def handle_client(websocket):
                 if (x ** 2 + y ** 2) ** 0.5 < JOYSTICK_DEAD_ZONE:
                     x, y = 0.0, 0.0
 
-                left = y + x
-                right = y - x
-                max_val = max(abs(left), abs(right), 1.0)
-                left /= max_val
-                right /= max_val
+                left = max(-1.0, min(1.0, y + x))
+                right = max(-1.0, min(1.0, y - x))
 
                 left_duty = left * motor.speed
                 right_duty = right * motor.speed
