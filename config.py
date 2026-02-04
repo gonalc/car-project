@@ -1,14 +1,14 @@
 """Pin definitions and configuration"""
 
-# Motor A pins
-ENA = 27
-IN1 = 23
-IN2 = 24
+# Motor A (left) — physical ENB, polarity inverted
+ENA = 16
+IN1 = 6
+IN2 = 26
 
-# Motor B pins
-ENB = 16
-IN3 = 26
-IN4 = 6
+# Motor B (right) — physical ENA
+ENB = 27
+IN3 = 23
+IN4 = 24
 
 # Settings
 DEFAULT_SPEED = 80
