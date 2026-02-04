@@ -13,3 +13,6 @@ IN4 = 6
 # Settings
 DEFAULT_SPEED = 80
 PWM_FREQUENCY = 100
+
+# Joystick
+JOYSTICK_DEAD_ZONE = 0.05
