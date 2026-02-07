@@ -5,6 +5,7 @@ import websockets
 import json
 from motor_controller import MotorController
 from config import JOYSTICK_DEAD_ZONE
+from camera import capture_image
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -69,6 +70,31 @@ async def handle_client(websocket):
                     'right_motor': round(right_duty, 1),
                 }
                 log.info("Response: %s", json.dumps(response))
+                await websocket.send(json.dumps(response))
+                continue
+            elif command == 'capture':
+                width = data.get('width', 640)
+                height = data.get('height', 480)
+                quality = data.get('quality', 80)
+
+                result = capture_image(width=width, height=height, quality=quality)
+
+                if result['success']:
+                    response = {
+                        'status': 'ok',
+                        'command': 'capture',
+                        'image': result['data'],
+                        'width': result['width'],
+                        'height': result['height'],
+                    }
+                else:
+                    response = {
+                        'status': 'error',
+                        'command': 'capture',
+                        'message': result['error'],
+                    }
+
+                log.info("Capture response: success=%s", result['success'])
                 await websocket.send(json.dumps(response))
                 continue
             else:
