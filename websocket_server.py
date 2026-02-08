@@ -6,7 +6,6 @@ import json
 from motor_controller import MotorController
 from config import JOYSTICK_DEAD_ZONE
 from camera import capture_image
-from stream import VideoStreamer
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -20,7 +19,6 @@ motor = None
 async def handle_client(websocket):
     global motor
     log.info("Client connected: %s", websocket.remote_address)
-    streamer = None
 
     try:
         async for message in websocket:
@@ -99,58 +97,6 @@ async def handle_client(websocket):
                 log.info("Capture response: success=%s", result['success'])
                 await websocket.send(json.dumps(response))
                 continue
-            elif command == 'stream':
-                action = data.get('action', 'start')
-
-                if action == 'start':
-                    if streamer and streamer.running:
-                        response = {
-                            'status': 'error',
-                            'command': 'stream',
-                            'message': 'stream already running',
-                        }
-                    else:
-                        width = data.get('width', 640)
-                        height = data.get('height', 480)
-                        framerate = data.get('framerate', 15)
-                        quality = data.get('quality', 80)
-
-                        streamer = VideoStreamer(
-                            websocket,
-                            width=width,
-                            height=height,
-                            framerate=framerate,
-                            quality=quality
-                        )
-                        await streamer.start()
-                        response = {
-                            'status': 'ok',
-                            'command': 'stream',
-                            'action': 'start',
-                            'width': width,
-                            'height': height,
-                            'framerate': framerate,
-                        }
-
-                elif action == 'stop':
-                    if streamer:
-                        await streamer.stop()
-                        streamer = None
-                    response = {
-                        'status': 'ok',
-                        'command': 'stream',
-                        'action': 'stop',
-                    }
-                else:
-                    response = {
-                        'status': 'error',
-                        'command': 'stream',
-                        'message': f'unknown action: {action}',
-                    }
-
-                log.info("Stream response: %s", response)
-                await websocket.send(json.dumps(response))
-                continue
             else:
                 log.warning("Unknown command: %s", command)
                 await websocket.send(json.dumps({'status': 'error', 'message': f'unknown command: {command}'}))
@@ -167,8 +113,6 @@ async def handle_client(websocket):
     except websockets.exceptions.ConnectionClosed:
         log.info("Client disconnected: %s", websocket.remote_address)
     finally:
-        if streamer:
-            await streamer.stop()
         motor.stop()
 
 async def main():
