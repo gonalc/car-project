@@ -85,6 +85,51 @@ All parameters are optional (defaults: 640x480, quality 80).
 }
 ```
 
+### MJPEG HTTP Streaming
+
+The `camera_server.py` provides real-time video streaming over HTTP, designed for Android app integration alongside WebSocket motor control.
+
+**Server Configuration:**
+- Port: 8080
+- Resolution: 640x480
+- Framerate: 15 fps
+- Codec: MJPEG
+
+**Endpoints:**
+
+| Endpoint | Content-Type | Description |
+|----------|--------------|-------------|
+| `/` | `text/html` | HTML page with embedded video viewer |
+| `/stream` | `multipart/x-mixed-replace` | Raw MJPEG stream for direct consumption |
+
+**Android Integration:**
+
+Run both servers simultaneously for full control + video:
+```bash
+# Terminal 1 - Motor control
+python websocket_server.py
+
+# Terminal 2 - Video stream
+python camera_server.py
+```
+
+In your Android app, use the same Pi IP for both connections:
+```kotlin
+val piIp = "192.168.1.100"
+
+// WebSocket for motor control
+val wsUrl = "ws://$piIp:8765"
+
+// MJPEG stream URL - display in WebView or MjpegView library
+val streamUrl = "http://$piIp:8080/stream"
+```
+
+**Stream Lifecycle:**
+- Stream starts automatically when a client connects to `/stream`
+- Stream stops when the client disconnects (closes HTTP connection)
+- Multiple clients can connect simultaneously (each spawns its own camera process)
+- Server handles graceful shutdown on SIGINT/SIGTERM (Ctrl+C)
+
 ## Key Conventions
 
 - GPIO uses BCM pin numbering (`GPIO.setmode(GPIO.BCM)`).
