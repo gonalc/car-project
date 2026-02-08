@@ -6,6 +6,9 @@ from threading import Thread
 import signal
 import sys
 
+# Track active camera processes for cleanup
+active_processes = set()
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -58,6 +61,7 @@ class MJPEGHandler(BaseHTTPRequestHandler):
 
             log.info("Starting camera: %s", ' '.join(cmd))
             process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            active_processes.add(process)
 
             try:
                 buffer = b''
@@ -93,6 +97,7 @@ class MJPEGHandler(BaseHTTPRequestHandler):
             finally:
                 process.terminate()
                 process.wait()
+                active_processes.discard(process)
                 log.info("Camera stopped")
 
         else:
@@ -109,13 +114,20 @@ def run_server():
 
     def shutdown(sig, frame):
         log.info("Shutting down...")
-        server.shutdown()
-        sys.exit(0)
+        # Kill any active camera processes
+        for proc in list(active_processes):
+            proc.terminate()
+        # Shutdown server in a thread to avoid deadlock
+        Thread(target=server.shutdown).start()
 
     signal.signal(signal.SIGINT, shutdown)
     signal.signal(signal.SIGTERM, shutdown)
 
-    server.serve_forever()
+    try:
+        server.serve_forever()
+    finally:
+        log.info("Server stopped")
+        sys.exit(0)
 
 
 if __name__ == "__main__":
