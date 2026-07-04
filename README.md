@@ -64,6 +64,36 @@ pip install RPi.GPIO websockets
 
 ## Usage
 
+### Motor Diagnostics
+
+Before driving, you can verify wiring and that both motors respond by running the built-in diagnostic. It pulses Motor A then Motor B briefly (forward, ~60% duty cycle) and logs the GPIO pin readback for each, so you can confirm the wiring without starting the full keyboard or WebSocket control loop:
+
+```bash
+python3 -c "
+from motor_controller import MotorController
+import logging
+logging.basicConfig(level=logging.INFO)
+motor = MotorController()
+motor.diagnose()
+motor.cleanup()
+"
+```
+
+Run this from the `car_project` directory on the Pi. Expected output looks like:
+
+```
+INFO ... === Motor Diagnostic Start ===
+INFO ... Testing Motor A (ENA=27, IN1=23, IN2=24) — should spin forward briefly
+INFO ...   Motor A readback: IN1=1 IN2=0 (expected 1/0)
+INFO ... Testing Motor B (ENB=16, IN3=26, IN4=6) — should spin forward briefly
+INFO ...   Motor B readback: IN3=1 IN4=0 (expected 1/0)
+INFO ... === Diagnostic PASSED — both motors pulsed, pins read back correctly ===
+```
+
+If a motor doesn't physically spin during its pulse even though the pin readback matches expectations, the issue is most likely the wiring between the L298N and the motor (or the motor itself), not the GPIO/software side. A `WARNING` instead of the final `PASSED` line means the pin readback itself was wrong — check the GPIO wiring against the [pinout table](#wiring-bcm-pin-numbering).
+
+This same diagnostic also runs automatically at startup of both `keyboard_control.py` and `websocket_server.py`.
+
 ### Keyboard Control
 
 Drive the car directly from a terminal on the Pi:
